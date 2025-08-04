@@ -122,9 +122,10 @@
     // mouseout. It will be assigned once the data is loaded.
     let geojsonLayer;
 
-    // Fetch the world TopoJSON. We rely on unpkg.com for this dataset.  The
-    // TopoJSON is compact (~108 kB) and converted client‑side to GeoJSON.
-    fetch("https://unpkg.com/world-atlas@2.0.2/files/countries-110m.json")
+    // Fetch the world TopoJSON.  The proper path to the file on unpkg.com is
+    // `/countries-110m.json` (without the `/files` directory).  The TopoJSON
+    // data is compact (~108 kB) and converted client‑side to GeoJSON.
+    fetch("https://unpkg.com/world-atlas@2.0.2/countries-110m.json")
       .then(response => response.json())
       .then(topoData => {
         // Convert TopoJSON to GeoJSON features.
