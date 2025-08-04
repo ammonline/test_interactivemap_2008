@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Impact of the 2008 Global Economic Crisis</title>
+  <!-- Leaflet CSS for the base map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha384-ZmFgdzOs0ECuHaDj8YVbGnW0TvPjmqtP69aF92dXcHniLJGyM+VwmgvO+Xrr4rcB"
+    crossorigin=""
+  />
+  <style>
+    /* Basic page styling */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    /* Container for the map */
+    #map {
+      width: 100%;
+      height: 95vh;
+    }
+    /* Optional legend styling (unused but left here for expansion) */
+    .legend {
+      background: white;
+      line-height: 1.5em;
+      padding: 6px 8px;
+      font-size: 14px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <!-- Leaflet JS library -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha384-DHEMdZo82TDUAnZjGoxK1mZK3uP0dHaJrc5qHxq+LJHi9DTHUblWz37RbNVd6HF4"
+    crossorigin=""
+  ></script>
+  <!-- TopoJSON client library for converting TopoJSON to GeoJSON -->
+  <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script>
+    // Data summarising why selected countries were hit hard by the 2008 crisis.
+    // Each entry contains a colour for highlighting and an HTML snippet giving the
+    // main reasons. These reasons are backed by cited research in the accompanying
+    // report.
+    const crisisData = {
+      "United States of America": {
+        color: "#e41a1c",
+        reason:
+          "<strong>United States</strong><br>Housing prices rose sharply in the early 2000s and banks issued risky sub‑prime mortgages. These loans were packaged into mortgage‑backed securities and CDOs. When the housing bubble burst, home and stock prices crashed, banks failed and GDP fell as unemployment rose【740207026757439†L55-L70】."
+      },
+      "United Kingdom": {
+        color: "#ff7f00",
+        reason:
+          "<strong>United Kingdom</strong><br>Banks such as Northern Rock used securitisation and wholesale markets instead of deposits to fund rapid mortgage growth. When credit markets froze, funding collapsed, depositors ran on the bank and the government had to guarantee deposits【535544301196929†screenshot】."
+      },
+      Germany: {
+        color: "#4daf4a",
+        reason:
+          "<strong>Germany</strong><br>Regional banks invested heavily in U.S. sub‑prime mortgage‑backed securities and required rescue when those assets soured. Germany’s export‑orientated economy also suffered as global demand collapsed, deepening the downturn【62150567696315†L65-L96】【361567193996775†L780-L824】."
+      },
+      France: {
+        color: "#984ea3",
+        reason:
+          "<strong>France</strong><br>Economic growth had already slowed as housing investment and net exports fell. After September 2008, the credit crunch triggered an abrupt decline in activity; consumption and investment dropped and the government guaranteed bank refinancing and injected equity into banks【479597396751986†L124-L158】."
+      },
+      Spain: {
+        color: "#377eb8",
+        reason:
+          "<strong>Spain</strong><br>A huge housing boom left households owing 115% of disposable income and the construction sector reached 18.5% of GDP. When the global liquidity freeze hit, the bubble burst, exposing record current‑account deficits and causing GDP to fall and unemployment to soar【997598215522321†L418-L425】【997598215522321†L450-L472】."
+      },
+      Ireland: {
+        color: "#a65628",
+        reason:
+          "<strong>Ireland</strong><br>An unprecedented rise in property prices and a construction boom, financed by bank lending and international capital, reversed after 2006. Over‑indebted households and developers caused banks to depend on central‑bank refinancing; following the Lehman collapse the government issued a blanket guarantee for bank liabilities【926028887544164†L70-L89】【926028887544164†L104-L108】."
+      },
+      Iceland: {
+        color: "#f781bf",
+        reason:
+          "<strong>Iceland</strong><br>After privatisation in the late 1990s, Icelandic banks expanded aggressively abroad and financed themselves by selling foreign‑currency bonds. Their combined assets grew from roughly one year’s GDP to almost ten, leaving the small central bank unable to act as a lender of last resort【506528925056861†L100-L134】. The banks operated mainly in foreign currencies and were highly leveraged with short‑term funding; without access to foreign liquidity they collapsed and the krona plunged in 2008【506528925056861†L149-L155】【506528925056861†L206-L209】."
+      },
+      Greece: {
+        color: "#a50f15",
+        reason:
+          "<strong>Greece</strong><br>Years of large fiscal deficits, tax evasion and misreported debts left Greece with a high debt‑to‑GDP ratio. Tourism and shipping revenues fell during the global recession and the exposure of hidden debts triggered a surge in borrowing costs, leading to a sovereign‑debt crisis and austerity measures【925430958774970†L26-L70】【925430958774970†L124-L134】."
+      },
+      Russia: {
+        color: "#e6550d",
+        reason:
+          "<strong>Russia</strong><br>Russia was hit by a double shock as oil and commodity prices collapsed and capital fled to safety. The economy’s heavy dependence on resource exports meant the global downturn translated into a sharp recession【328601263421243†L210-L247】."
+      },
+      China: {
+        color: "#31a354",
+        reason:
+          "<strong>China</strong><br>Chinese banks had little exposure to complex sub‑prime securities, so the domestic banking system remained stable. But exports – which accounted for more than 30 % of GDP – collapsed, cutting growth by several percentage points. The government responded with a massive fiscal stimulus and interest‑rate cuts to boost domestic demand【938594471439943†L48-L63】【938594471439943†L69-L85】."
+      },
+      Japan: {
+        color: "#1f78b4",
+        reason:
+          "<strong>Japan</strong><br>As a trade‑dependent economy, Japan suffered a sharp decline in output when global demand collapsed. Japanese banks also held significant equity positions, and the fall in stock prices eroded their capital. The U.S. Federal Reserve set up dollar swap lines to ease funding pressures in Japan【361567193996775†L780-L824】."
+      }
+    };
+
+    // Initialise the Leaflet map. The center/zoom values place the map so that
+    // all continents are visible. Users can zoom and pan freely.
+    const map = L.map("map", {
+      center: [20, 0],
+      zoom: 2,
+      minZoom: 2
+    });
+    // Add a base map layer using OpenStreetMap tiles.
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors"
+    }).addTo(map);
+
+    // Keep a reference to the GeoJSON layer so that we can reset styles on
+    // mouseout. It will be assigned once the data is loaded.
+    let geojsonLayer;
+
+    // Fetch the world TopoJSON. We rely on unpkg.com for this dataset.  The
+    // TopoJSON is compact (~108 kB) and converted client‑side to GeoJSON.
+    fetch("https://unpkg.com/world-atlas@2.0.2/files/countries-110m.json")
+      .then(response => response.json())
+      .then(topoData => {
+        // Convert TopoJSON to GeoJSON features.
+        const features = topojson.feature(
+          topoData,
+          topoData.objects.countries
+        ).features;
+        // Create the GeoJSON layer with styling and interactivity.
+        geojsonLayer = L.geoJSON(features, {
+          style: feature => {
+            const name = feature.properties.name;
+            const data = crisisData[name];
+            // Countries in our dataset get a vivid colour; others are muted.
+            return {
+              weight: 0.5,
+              color: "#555", // border colour
+              fillColor: data ? data.color : "#f0f0f0",
+              fillOpacity: data ? 0.8 : 0.3
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties.name;
+            const data = crisisData[name];
+            if (data) {
+              // Attach a tooltip showing the country‑specific reasons when hovered.
+              layer.bindTooltip(data.reason, { sticky: true });
+              // Highlight the country on mouseover.
+              layer.on("mouseover", e => {
+                const target = e.target;
+                target.setStyle({
+                  weight: 1.5,
+                  color: "#222",
+                  fillOpacity: 1
+                });
+              });
+              // Reset the style when the mouse leaves the country.
+              layer.on("mouseout", e => {
+                geojsonLayer.resetStyle(e.target);
+              });
+            }
+          }
+        });
+        // Add the layer to the map after configuration.
+        geojsonLayer.addTo(map);
+      })
+      .catch(error => {
+        console.error("Error loading map data:", error);
+      });
+  </script>
+</body>
+</html>
